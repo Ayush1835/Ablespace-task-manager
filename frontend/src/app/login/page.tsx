@@ -21,8 +21,9 @@ export default function LoginPage() {
     setErrorMessage('');
     setIsLoading(true);
 
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
     try {
-      const response = await fetch('http://localhost:3001/api/auth/login', {
+      const response = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -47,8 +48,9 @@ export default function LoginPage() {
     setErrorMessage('');
     setIsGuestLoading(true);
 
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
     try {
-      const response = await fetch('http://localhost:3001/api/auth/guest', {
+      const response = await fetch(`${API_BASE}/auth/guest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });

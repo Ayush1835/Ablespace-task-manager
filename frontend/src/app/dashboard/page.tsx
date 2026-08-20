@@ -60,13 +60,15 @@ export default function DashboardPage() {
     };
   };
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+
   const fetchTasks = async () => {
     const headers = getHeaders();
     if (!headers) return;
 
     try {
       setErrorMsg('');
-      const res = await fetch('http://localhost:3001/api/tasks', { headers });
+      const res = await fetch(`${API_BASE}/tasks`, { headers });
       if (!res.ok) {
         if (res.status === 401) {
           handleLogout();
@@ -89,7 +91,7 @@ export default function DashboardPage() {
 
     setIsSyncing(true);
     try {
-      const res = await fetch('http://localhost:3001/api/tasks', {
+      const res = await fetch(`${API_BASE}/tasks`, {
         method: 'POST',
         headers,
         body: JSON.stringify(taskData),
@@ -110,7 +112,7 @@ export default function DashboardPage() {
 
     setIsSyncing(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/tasks/${id}`, {
+      const res = await fetch(`${API_BASE}/tasks/${id}`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify(updatedFields),
@@ -131,7 +133,7 @@ export default function DashboardPage() {
 
     setIsSyncing(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/tasks/${id}`, {
+      const res = await fetch(`${API_BASE}/tasks/${id}`, {
         method: 'DELETE',
         headers,
       });
