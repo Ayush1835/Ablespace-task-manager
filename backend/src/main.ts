@@ -1,21 +1,37 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
+let cachedServer: any;
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
-  // Enable Global API prefix
   app.setGlobalPrefix('api');
-
-  // Enable CORS for frontend integration
   app.enableCors({
-    origin: '*', // For development simplicity, allow requests from any host
+    origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 
-  const port = process.env.PORT || 3001;
-  await app.listen(port);
-  console.log(`Backend Application is running on: http://localhost:${port}/api`);
+  if (process.env.VERCEL) {
+    await app.init();
+    return app.getHttpAdapter().getInstance();
+  } else {
+    const port = process.env.PORT || 3001;
+    await app.listen(port);
+    console.log(`Backend Application is running on: http://localhost:${port}/api`);
+  }
 }
-bootstrap();
+
+// Run normally for local development
+if (!process.env.VERCEL) {
+  bootstrap();
+}
+
+// Export serverless handler for Vercel deployment
+export default async (req: any, res: any) => {
+  if (!cachedServer) {
+    cachedServer = await bootstrap();
+  }
+  return cachedServer(req, res);
+};
