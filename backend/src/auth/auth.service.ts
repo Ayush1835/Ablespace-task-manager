@@ -1,0 +1,94 @@
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from '../prisma.service';
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private prisma: PrismaService,
+    private jwtService: JwtService,
+  ) {}
+
+  async login(email: string) {
+    let user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      // For the assessment simplicity, automatically sign up standard users on their first login attempt
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          name: email.split('@')[0],
+          isGuest: false,
+          avatarUrl: `https://api.dicebear.com/7.x/adventurer/svg?seed=${email}`,
+        },
+      });
+    }
+
+    const payload = { sub: user.id, email: user.email, isGuest: user.isGuest, name: user.name };
+    return {
+      user,
+      accessToken: this.jwtService.sign(payload),
+    };
+  }
+
+  async loginAsGuest() {
+    const randomSeed = Math.floor(100000 + Math.random() * 900000);
+    const guestEmail = `guest_${randomSeed}@ablespace-guest.com`;
+    
+    const user = await this.prisma.user.create({
+      data: {
+        email: guestEmail,
+        name: `Guest SLP`,
+        isGuest: true,
+        avatarUrl: `https://api.dicebear.com/7.x/adventurer/svg?seed=guest_${randomSeed}`,
+      },
+    });
+
+    // Create a few default tasks for the guest user to populate the Kanban board on first load!
+    await this.prisma.task.createMany({
+      data: [
+        {
+          title: "Write IEP goal report for Alex Smith",
+          description: "Draft progress summary based on speech production accuracy data.",
+          status: "TODO",
+          priority: "HIGH",
+          dueDate: new Date(Date.now() + 86400000 * 2), // 2 days from now
+          progress: 0,
+          assigneeId: user.id,
+        },
+        {
+          title: "Prepare target materials for group articulation session",
+          description: "Print /s/ blend word lists and flashcards.",
+          status: "IN_PROGRESS",
+          priority: "MEDIUM",
+          dueDate: new Date(Date.now() + 86400000 * 1), // 1 day from now
+          progress: 50,
+          assigneeId: user.id,
+        },
+        {
+          title: "Sync caseload data with district repository",
+          description: "Completed import of student roster from district database.",
+          status: "DONE",
+          priority: "LOW",
+          dueDate: new Date(),
+          progress: 100,
+          assigneeId: user.id,
+        }
+      ]
+    });
+
+    const payload = { sub: user.id, email: user.email, isGuest: true, name: user.name };
+    return {
+      user,
+      accessToken: this.jwtService.sign(payload),
+    };
+  }
+
+  async validateUserById(id: string) {
+    return this.prisma.user.findUnique({
+      where: { id },
+    });
+  }
+}
