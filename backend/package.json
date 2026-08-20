@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "NestJS Task Management Backend",
   "scripts": {
-    "build": "nest build",
+    "build": "prisma generate && nest build",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "prisma:generate": "prisma generate",
