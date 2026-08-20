@@ -4,10 +4,15 @@ import { PrismaClient } from '@prisma/client';
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
-    await this.$connect();
+    // Only connect to database locally, bypass on Vercel serverless environment
+    if (!process.env.VERCEL) {
+      await this.$connect();
+    }
   }
 
   async onModuleDestroy() {
-    await this.$disconnect();
+    if (!process.env.VERCEL) {
+      await this.$disconnect();
+    }
   }
 }

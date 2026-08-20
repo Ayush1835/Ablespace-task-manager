@@ -1,6 +1,7 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma.service';
+import { usersStore, seedDefaultTasks, User } from '../memory-store';
 
 @Injectable()
 export class AuthService {
@@ -10,12 +11,29 @@ export class AuthService {
   ) {}
 
   async login(email: string) {
+    if (process.env.VERCEL) {
+      let user = Array.from(usersStore.values()).find((u) => u.email === email);
+      if (!user) {
+        user = {
+          id: `user-${Date.now()}`,
+          email,
+          name: email.split('@')[0],
+          isGuest: false,
+          avatarUrl: `https://api.dicebear.com/7.x/adventurer/svg?seed=${email}`,
+          createdAt: new Date(),
+        };
+        usersStore.set(user.id, user);
+      }
+      const payload = { sub: user.id, email: user.email, isGuest: user.isGuest, name: user.name };
+      return { user, accessToken: this.jwtService.sign(payload) };
+    }
+
+    // Local standard execution
     let user = await this.prisma.user.findUnique({
       where: { email },
     });
 
     if (!user) {
-      // For the assessment simplicity, automatically sign up standard users on their first login attempt
       user = await this.prisma.user.create({
         data: {
           email,
@@ -34,6 +52,25 @@ export class AuthService {
   }
 
   async loginAsGuest() {
+    if (process.env.VERCEL) {
+      const randomSeed = Math.floor(100000 + Math.random() * 900000);
+      const guestEmail = `guest_${randomSeed}@ablespace-guest.com`;
+      const user: User = {
+        id: `guest-${randomSeed}`,
+        email: guestEmail,
+        name: `Guest SLP`,
+        isGuest: true,
+        avatarUrl: `https://api.dicebear.com/7.x/adventurer/svg?seed=guest_${randomSeed}`,
+        createdAt: new Date(),
+      };
+      usersStore.set(user.id, user);
+      seedDefaultTasks(user.id);
+
+      const payload = { sub: user.id, email: user.email, isGuest: true, name: user.name };
+      return { user, accessToken: this.jwtService.sign(payload) };
+    }
+
+    // Local standard execution
     const randomSeed = Math.floor(100000 + Math.random() * 900000);
     const guestEmail = `guest_${randomSeed}@ablespace-guest.com`;
     
@@ -46,7 +83,6 @@ export class AuthService {
       },
     });
 
-    // Create a few default tasks for the guest user to populate the Kanban board on first load!
     await this.prisma.task.createMany({
       data: [
         {
@@ -54,7 +90,7 @@ export class AuthService {
           description: "Draft progress summary based on speech production accuracy data.",
           status: "TODO",
           priority: "HIGH",
-          dueDate: new Date(Date.now() + 86400000 * 2), // 2 days from now
+          dueDate: new Date(Date.now() + 86400000 * 2),
           progress: 0,
           assigneeId: user.id,
         },
@@ -63,7 +99,7 @@ export class AuthService {
           description: "Print /s/ blend word lists and flashcards.",
           status: "IN_PROGRESS",
           priority: "MEDIUM",
-          dueDate: new Date(Date.now() + 86400000 * 1), // 1 day from now
+          dueDate: new Date(Date.now() + 86400000 * 1),
           progress: 50,
           assigneeId: user.id,
         },
@@ -87,6 +123,9 @@ export class AuthService {
   }
 
   async validateUserById(id: string) {
+    if (process.env.VERCEL) {
+      return usersStore.get(id);
+    }
     return this.prisma.user.findUnique({
       where: { id },
     });
